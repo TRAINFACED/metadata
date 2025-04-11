@@ -96,7 +96,7 @@ jobs:
         id: branch
         run: |
             safe_repo="${REPO//\//-}"
-            echo "branch=metadata-${safe_repo}-${VERSION}" >> $GITHUB_OUTPUT
+            echo "branch=metadata-${safe_repo}-${TAG}" >> $GITHUB_OUTPUT
 
       - name: Create pull request
         uses: peter-evans/create-pull-request@v6
