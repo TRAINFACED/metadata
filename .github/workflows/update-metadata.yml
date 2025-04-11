@@ -77,9 +77,9 @@ jobs:
             jq -n \
                 --argjson config "$(cat config.json)" \
                 --argjson baton_capabilities "$(cat baton_capabilities.json)" \
-                '{config: $config, baton_capabilities: $baton_capabilities}' \
+                '{config: $config, baton_capabilities: $baton_capabilities, \
+                URI: "168442440833.dkr.ecr.us-west-2.amazonaws.com/baton-${REPO_NAME}:${TAG}-arm64"}' \
                 > "metadata/TRAINFACED/$REPO_NAME/$MAJOR/$MINOR/$PATCH.json"
-
             rm config.json baton_capabilities.json
 
       - name: Compute safe branch name
