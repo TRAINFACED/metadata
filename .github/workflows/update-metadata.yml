@@ -125,32 +125,34 @@ jobs:
         env:
             GH_TOKEN: ${{ secrets.METADATA_REPO_PAT }}
         run: |
-            echo "Using PR ID: $PR_ID"
-            set -e
-        
-            echo "Trying to enable auto-merge..."
-            response=$(mktemp)
-            status=$(gh api graphql \
-            -f query='
-                mutation($pullRequestId: ID!) {
+            echo "Trying to enable auto-merge for PR: $PR_ID"
+
+            set -eo pipefail
+
+            RESPONSE=$(gh api graphql -f query='
+            mutation($pullRequestId: ID!) {
                 enablePullRequestAutoMerge(input: {
-                    pullRequestId: $pullRequestId,
-                    mergeMethod: SQUASH
+                pullRequestId: $pullRequestId,
+                mergeMethod: SQUASH
                 }) {
-                    pullRequest {
+                pullRequest {
                     number
                     autoMergeRequest {
-                        enabledAt
-                    }
+                    enabledAt
                     }
                 }
-                }' \
-            -f pullRequestId="$PR_ID" -s -w "%{http_code}" -o "$response" || echo 422)
-        
-            if grep -q 'UNPROCESSABLE' "$response"; then
-                echo "⚠️ Auto-merge not applicable (clean status). Merging immediately..."
-                pr_url=${{ steps.cpr.outputs.pull-request-url }}
-                gh pr merge "$pr_url" --squash --auto
+                }
+            }' -f pullRequestId="$PR_ID" 2>&1) || true
+
+            echo "$RESPONSE"
+
+            if echo "$RESPONSE" | grep -q "UNPROCESSABLE"; then
+            echo "⚠️ Auto-merge not applicable (clean PR). Merging immediately..."
+            gh pr merge "${{ steps.cpr.outputs.pull-request-url }}" --squash
+            elif echo "$RESPONSE" | grep -q "errors"; then
+            echo "❌ Failed to enable auto-merge:"
+            echo "$RESPONSE"
+            exit 1
             else
-            echo "✅ Auto-merge enabled or queued."
+            echo "✅ Auto-merge successfully enabled."
             fi
