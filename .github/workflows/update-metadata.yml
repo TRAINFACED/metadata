@@ -92,10 +92,10 @@ jobs:
         uses: peter-evans/create-pull-request@v6
         with:
             token: ${{ secrets.METADATA_REPO_PAT }}
-            commit-message: "Add metadata for ${{ env.REPO }}@${{ env.VERSION }}"
-            title: "Add metadata for ${{ env.REPO }}@${{ env.VERSION }}"
+            commit-message: "Add metadata for [TRAINFACED]/${{ env.REPO_NAME }}@${{ env.TAG }}"
+            title: "Add metadata for [TRAINFACED]/${{ env.REPO_NAME }}@${{ env.TAG }}"
             body: |
                 This PR contains configuration metadata for:
-                - Repo: ${{ env.REPO }}
-                - Version: ${{ env.VERSION }}
+                - Repo: ${{ env.REPO_NAME }}
+                - TAG: ${{ env.TAG }}
             branch: ${{ steps.branch.outputs.branch }}
