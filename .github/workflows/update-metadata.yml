@@ -117,6 +117,13 @@ jobs:
             GH_TOKEN: ${{ secrets.METADATA_REPO_PAT }}
             PR_ID: ${{ steps.cpr.outputs.pull-request-id }}
         run: |
+            pr_number=${{ steps.cpr.outputs.pull-request-number }}
+            repo="${{ github.repository }}"
+            pr_data=$(gh api repos/$repo/pulls/$pr_number)
+            pr_id=$(echo "$pr_data" | jq -r '.node_id')
+            echo "PR_ID=$pr_id" >> $GITHUB_ENV
+            echo "PR_NUMBER=$pr_number" >> $GITHUB_ENV
+            echo "Raw ID from create-pull-request: $PR_ID"
             gh api graphql -f query='
             mutation($pullRequestId: ID!) {
                 enablePullRequestAutoMerge(input: {
