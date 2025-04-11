@@ -20,11 +20,11 @@ jobs:
             sender=$(jq -r .sender payload.json)
             version=$(jq -r .version payload.json)
             config=$(jq -c .config payload.json)        
-            capabilities=$(jq -c .capabilities payload.json)
+            baton_capabilities=$(jq -c .baton_capabilities payload.json)
             echo "REPO=$sender" >> $GITHUB_ENV
             echo "VERSION=$version" >> $GITHUB_ENV
             echo "CONFIG=$config" >> $GITHUB_ENV
-            echo "CAPABILITIES=$capabilities" >> $GITHUB_ENV
+            echo "BATON_CAPABILITIES=$baton_capabilities" >> $GITHUB_ENV
             echo "SENDER=${{ github.event.client_payload.sender }}" >> $GITHUB_ENV
 
       - name: Split semver
@@ -42,6 +42,8 @@ jobs:
             echo "MAJOR=$MAJOR"
             echo "MINOR=$MINOR"
             echo "PATCH=$PATCH"
+            echo "CONFIG=$CONFIG"
+            echo "BATON_CAPABILITIES=$BATON_CAPABILITIES"
 
       - name: Write metadata file
         run: |
@@ -50,8 +52,8 @@ jobs:
 
             jq -n \
                 --argjson config "$CONFIG" \
-                --argjson capabilities "$CAPABILITIES" \
-                '{config: $config, capabilities: $capabilities}' \
+                --argjson baton_capabilities "$BATON_CAPABILITIES" \
+                '{config: $config, baton_capabilities: $baton_capabilities}' \
                 > "metadata/$REPO/$MAJOR/$MINOR/$PATCH.json"
 
 
