@@ -19,10 +19,12 @@ jobs:
             jq . payload.json
             sender=$(jq -r .sender payload.json)
             version=$(jq -r .version payload.json)
-            config=$(jq -c .config payload.json)    
+            config=$(jq -c .config payload.json)        
+            capabilities=$(jq -c .capabilities payload.json)
             echo "REPO=$sender" >> $GITHUB_ENV
             echo "VERSION=$version" >> $GITHUB_ENV
             echo "CONFIG=$config" >> $GITHUB_ENV
+            echo "CAPABILITIES=$capabilities" >> $GITHUB_ENV
             echo "SENDER=${{ github.event.client_payload.sender }}" >> $GITHUB_ENV
 
       - name: Split semver
@@ -44,8 +46,15 @@ jobs:
       - name: Write metadata file
         run: |
             rm payload.json
-            mkdir -p "$REPO/$MAJOR/$MINOR"
-            echo "$CONFIG" > "$REPO/$MAJOR/$MINOR/$PATCH.json"
+            mkdir -p "metadata/$REPO/$MAJOR/$MINOR"
+
+            jq -n \
+                --argjson config "$CONFIG" \
+                --argjson capabilities "$CAPABILITIES" \
+                '{config: $config, capabilities: $capabilities}' \
+                > "metadata/$REPO/$MAJOR/$MINOR/$PATCH.json"
+
+
 
       - name: Compute safe branch name
         id: branch
