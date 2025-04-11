@@ -25,7 +25,6 @@ jobs:
             echo "REPO=$repo" >> $GITHUB_ENV
             echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
             echo "TAG=$tag" >> $GITHUB_ENV
-            echo "SENDER=${{ github.event.client_payload.sender }}" >> $GITHUB_ENV
 
             IFS='.' read -r MAJOR MINOR PATCH <<< "${tag#v}"
             echo "MAJOR=$MAJOR" >> $GITHUB_ENV
@@ -36,20 +35,31 @@ jobs:
         run: |
             echo "REPO_NAME=$REPO_NAME"
             echo "TAG=$TAG"
-            echo "SENDER=$SENDER"
             echo "MAJOR=$MAJOR"
             echo "MINOR=$MINOR"
             echo "PATCH=$PATCH"
 
       - name: Fetch Schemas
         run: |
-            curl -s -H "Authorization: Bearer ${{ secrets.METADATA_REPO_PAT }}" \
-                -o config.json \
-                https://raw.githubusercontent.com/TRAINFACED/${REPO}/${TAG}/config.json
+            AUTH="Authorization: Bearer ${{ secrets.METADATA_REPO_PAT }}"
+            for file in config.json baton_capabilities.json; do
+                url="https://raw.githubusercontent.com/$REPO/$TAG/$file"
+                tmp=$(mktemp)
 
-            curl -s -H "Authorization: Bearer ${{ secrets.METADATA_REPO_PAT }}" \
-                -o baton_capabilities.json \
-                https://raw.githubusercontent.com/TRAINFACED/${REPO}/${TAG}/baton_capabilities.json
+                echo "Fetching $file..."
+                status=$(curl -s -o "$tmp" -w "%{http_code}" -H "$AUTH" "$url")
+
+                if [ "$status" -ne 200 ]; then
+                    echo "❌ Failed to fetch $file from $url (status $status)"
+                    echo "--- Response ---"
+                    cat "$tmp"
+                    echo "----------------"
+                    exit 1
+                fi
+
+                mv "$tmp" "$file"
+                echo "✅ Downloaded $file"
+            done
 
       - name: Write metadata file
         run: |
