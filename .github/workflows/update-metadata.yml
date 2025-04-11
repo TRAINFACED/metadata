@@ -30,6 +30,14 @@ jobs:
             echo "MAJOR=$MAJOR" >> $GITHUB_ENV
             echo "MINOR=$MINOR" >> $GITHUB_ENV
             echo "PATCH=$PATCH" >> $GITHUB_ENV
+            
+            # Validate required vars
+            for var in REPO_NAME MAJOR MINOR PATCH; do
+            if [ -z "${!var}" ]; then
+                echo "❌ Error: $var is unset or empty"
+                exit 1
+            fi
+            done
 
       - name: Debug ENV values
         run: |
@@ -64,13 +72,14 @@ jobs:
       - name: Write metadata file
         run: |
             rm payload.json
-            mkdir -p "metadata/$REPO/$MAJOR/$MINOR"
+            mkdir -p "metadata/TRAINFACED/$REPO_NAME/$MAJOR/$MINOR"
 
             jq -n \
                 --argjson config "$(cat config.json)" \
                 --argjson baton_capabilities "$(cat baton_capabilities.json)" \
                 '{config: $config, baton_capabilities: $baton_capabilities}' \
-                > "metadata/TRAINFACED/$REPO/$MAJOR/$MINOR/$PATCH.json"
+                > "metadata/TRAINFACED/$REPO_NAME/$MAJOR/$MINOR/$PATCH.json"
+
             rm config.json baton_capabilities.json
 
       - name: Compute safe branch name
