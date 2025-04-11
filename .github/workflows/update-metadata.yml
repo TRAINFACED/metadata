@@ -17,33 +17,37 @@ jobs:
         run: |
             echo '${{ toJson(github.event.client_payload) }}' > payload.json
             jq . payload.json
-            sender=$(jq -r .sender payload.json)
-            version=$(jq -r .version payload.json)
-            config=$(jq -c .config payload.json)        
-            baton_capabilities=$(jq -c .baton_capabilities payload.json)
-            echo "REPO=$sender" >> $GITHUB_ENV
-            echo "VERSION=$version" >> $GITHUB_ENV
-            echo "CONFIG=$config" >> $GITHUB_ENV
-            echo "BATON_CAPABILITIES=$baton_capabilities" >> $GITHUB_ENV
+            repo=$(jq -r .repo payload.json)
+            tag=$(jq -r .tag payload.json)
+            echo "REPO=$repo" >> $GITHUB_ENV
+            echo "TAG=$tag" >> $GITHUB_ENV
             echo "SENDER=${{ github.event.client_payload.sender }}" >> $GITHUB_ENV
 
-      - name: Split semver
-        run: |
             IFS='.' read -r MAJOR MINOR PATCH <<< "${VERSION#v}"
             echo "MAJOR=$MAJOR" >> $GITHUB_ENV
             echo "MINOR=$MINOR" >> $GITHUB_ENV
             echo "PATCH=$PATCH" >> $GITHUB_ENV
+            REPO_NAME="${repo##*/}"
+            echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
+
       - name: Debug ENV values
         run: |
-            echo "REPO=$REPO"
-            echo "VERSION=$VERSION"
-            echo "GITHUB_ACTOR=$GITHUB_ACTOR"
+            echo "REPO_NAME=$REPO_NAME"
+            echo "TAG=$TAG"
             echo "SENDER=$SENDER"
             echo "MAJOR=$MAJOR"
             echo "MINOR=$MINOR"
             echo "PATCH=$PATCH"
-            echo "CONFIG=$CONFIG"
-            echo "BATON_CAPABILITIES=$BATON_CAPABILITIES"
+
+      - name: Fetch Schemas
+        run: |
+            curl -s -H "Authorization: Bearer ${{ secrets.METADATA_REPO_PAT }}" \
+                -o config.json \
+                https://raw.githubusercontent.com/TRAINFACED/${REPO}/${TAG}/config.json
+
+            curl -s -H "Authorization: Bearer ${{ secrets.METADATA_REPO_PAT }}" \
+                -o baton_capabilities.json \
+                https://raw.githubusercontent.com/TRAINFACED/${REPO}/${TAG}/baton_capabilities.json
 
       - name: Write metadata file
         run: |
@@ -51,12 +55,11 @@ jobs:
             mkdir -p "metadata/$REPO/$MAJOR/$MINOR"
 
             jq -n \
-                --argjson config "$CONFIG" \
-                --argjson baton_capabilities "$BATON_CAPABILITIES" \
+                --argjson config "$(cat config.json)" \
+                --argjson baton_capabilities "$(cat baton_capabilities.json)" \
                 '{config: $config, baton_capabilities: $baton_capabilities}' \
-                > "metadata/$REPO/$MAJOR/$MINOR/$PATCH.json"
-
-
+                > "metadata/TRAINFACED/$REPO/$MAJOR/$MINOR/$PATCH.json"
+            rm config.json baton_capabilities.json
 
       - name: Compute safe branch name
         id: branch
