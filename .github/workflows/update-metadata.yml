@@ -121,24 +121,36 @@ jobs:
             pr_id=$(echo "$pr_data" | jq -r '.node_id')
             echo "PR_ID=$pr_id" >> $GITHUB_ENV
 
-      - name: Enable auto-merge for PR
-        if: steps.cpr.outputs.pull-request-url != ''
+      - name: Enable auto-merge or merge if ready
         env:
             GH_TOKEN: ${{ secrets.METADATA_REPO_PAT }}
         run: |
             echo "Using PR ID: $PR_ID"
-            gh api graphql -f query='
-            mutation($pullRequestId: ID!) {
+            set -e
+        
+            echo "Trying to enable auto-merge..."
+            response=$(mktemp)
+            status=$(gh api graphql \
+            -f query='
+                mutation($pullRequestId: ID!) {
                 enablePullRequestAutoMerge(input: {
-                pullRequestId: $pullRequestId,
-                mergeMethod: SQUASH
+                    pullRequestId: $pullRequestId,
+                    mergeMethod: SQUASH
                 }) {
-                pullRequest {
+                    pullRequest {
                     number
                     autoMergeRequest {
-                    enabledAt
+                        enabledAt
+                    }
                     }
                 }
-                }
-            }' \
-            -f pullRequestId="$PR_ID"
+                }' \
+            -f pullRequestId="$PR_ID" -s -w "%{http_code}" -o "$response" || echo 422)
+        
+            if grep -q 'UNPROCESSABLE' "$response"; then
+                echo "⚠️ Auto-merge not applicable (clean status). Merging immediately..."
+                pr_url=${{ steps.cpr.outputs.pull-request-url }}
+                gh pr merge "$pr_url" --squash --auto
+            else
+            echo "✅ Auto-merge enabled or queued."
+            fi
