@@ -15,43 +15,42 @@ jobs:
       - name: Parse payload
         id: parse
         run: |
-          echo '${{ toJson(github.event.client_payload) }}' > payload.json
-          jq . payload.json
-
-          sender=$(jq -r .sender payload.json)
-          version=$(jq -r .version payload.json)
-          config=$(jq -c .config payload.json)
-
-          echo "REPO=$sender" >> $GITHUB_ENV
-          echo "VERSION=$version" >> $GITHUB_ENV
-          echo "CONFIG=$config" >> $GITHUB_ENV
+            echo '${{ toJson(github.event.client_payload) }}' > payload.json
+            jq . payload.json   
+            sender=$(jq -r .sender payload.json)
+            version=$(jq -r .version payload.json)
+            config=$(jq -c .config payload.json)    
+            echo "REPO=$sender" >> $GITHUB_ENV
+            echo "VERSION=$version" >> $GITHUB_ENV
+            echo "CONFIG=$config" >> $GITHUB_ENV
 
       - name: Split semver
         run: |
-          IFS='.' read -r MAJOR MINOR PATCH <<< "${VERSION#v}"
-          echo "MAJOR=$MAJOR" >> $GITHUB_ENV
-          echo "MINOR=$MINOR" >> $GITHUB_ENV
-          echo "PATCH=$PATCH" >> $GITHUB_ENV
+            IFS='.' read -r MAJOR MINOR PATCH <<< "${VERSION#v}"
+            echo "MAJOR=$MAJOR" >> $GITHUB_ENV
+            echo "MINOR=$MINOR" >> $GITHUB_ENV
+            echo "PATCH=$PATCH" >> $GITHUB_ENV
 
       - name: Write metadata file
         run: |
-          mkdir -p "$REPO/$MAJOR/$MINOR"
-          echo "$CONFIG" > "$REPO/$MAJOR/$MINOR/$PATCH.json"
+            rm payload.json
+            mkdir -p "$REPO/$MAJOR/$MINOR"
+            echo "$CONFIG" > "$REPO/$MAJOR/$MINOR/$PATCH.json"
 
       - name: Compute safe branch name
         id: branch
         run: |
-          safe_repo="${REPO//\//-}"
-          echo "branch=metadata-${safe_repo}-${VERSION}" >> $GITHUB_OUTPUT
+            safe_repo="${REPO//\//-}"
+            echo "branch=metadata-${safe_repo}-${VERSION}" >> $GITHUB_OUTPUT
 
       - name: Create pull request
         uses: peter-evans/create-pull-request@v6
         with:
-          token: ${{ secrets.METADATA_REPO_PAT }}
-          commit-message: "Add metadata for $REPO@$VERSION"
-          title: "Add metadata for $REPO@$VERSION"
-          body: |
-            This PR contains configuration metadata for:
-            - Repo: `$REPO`
-            - Version: `$VERSION`
-          branch: ${{ steps.branch.outputs.branch }}
+            token: ${{ secrets.METADATA_REPO_PAT }}
+            commit-message: "Add metadata for ${{ env.REPO }}@${{ env.VERSION }}"
+            title: "Add metadata for ${{ env.REPO }}@${{ env.VERSION }}"
+            body: |
+                This PR contains configuration metadata for:
+                - Repo: ${{ env.REPO }}
+                - Version: ${{ env.VERSION }}
+            branch: ${{ steps.branch.outputs.branch }}
