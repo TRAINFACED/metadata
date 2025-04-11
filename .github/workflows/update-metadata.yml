@@ -120,4 +120,4 @@ jobs:
             echo "PR URL: $pr_url"
         
             # Enable auto-merge using the GitHub CLI
-            gh pr merge "$pr_url" --auto --squash
+            gh pr merge "$pr_url" --auto
