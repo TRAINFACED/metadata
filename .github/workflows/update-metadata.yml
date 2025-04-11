@@ -42,7 +42,9 @@ jobs:
                 echo "❌ Invalid REPO_NAME: $REPO_NAME"
                 exit 1
             fi
-            URI="168442440833.dkr.ecr.us-west-2.amazonaws.com/baton-${REPO_NAME}:${TAG}-arm64"
+            
+            #  168442440833.dkr.ecr.us-west-2.amazonaws.com/baton-github:0.1.28-arm64
+            URI="168442440833.dkr.ecr.us-west-2.amazonaws.com/baton-${REPO_NAME}:${tag}-arm64"
             echo "IMAGE_URI=$URI" >> $GITHUB_ENV
 
 
