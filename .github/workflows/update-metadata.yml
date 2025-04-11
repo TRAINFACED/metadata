@@ -111,13 +111,23 @@ jobs:
                 - TAG: ${{ env.TAG }}
             branch: ${{ steps.branch.outputs.branch }}
 
-      - name: Enable auto-merge
+      - name: Enable auto-merge for PR
         if: steps.cpr.outputs.pull-request-url != ''
         env:
             GH_TOKEN: ${{ secrets.METADATA_REPO_PAT }}
         run: |
-            pr_url="${{ steps.cpr.outputs.pull-request-url }}"
-            echo "PR URL: $pr_url"
-        
-            # Enable auto-merge using the GitHub CLI
-            gh pr merge "$pr_url" --auto
+            gh api graphql -f query='
+            mutation($pullRequestId: ID!) {
+                enablePullRequestAutoMerge(input: {
+                pullRequestId: $pullRequestId,
+                mergeMethod: SQUASH
+                }) {
+                pullRequest {
+                    number
+                    autoMergeRequest {
+                    enabledAt
+                    }
+                }
+                }
+            }' \
+            -f pullRequestId="${steps.cpr.outputs.pull-request-number}"
