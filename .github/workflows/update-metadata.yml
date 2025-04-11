@@ -115,6 +115,7 @@ jobs:
         if: steps.cpr.outputs.pull-request-url != ''
         env:
             GH_TOKEN: ${{ secrets.METADATA_REPO_PAT }}
+            PR_ID: ${{ steps.cpr.outputs.pull-request-id }}
         run: |
             gh api graphql -f query='
             mutation($pullRequestId: ID!) {
@@ -130,4 +131,4 @@ jobs:
                 }
                 }
             }' \
-            -f pullRequestId="${steps.cpr.outputs.pull-request-number}"
+            -f pullRequestId="$PR_ID"
