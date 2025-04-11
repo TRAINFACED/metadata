@@ -38,6 +38,13 @@ jobs:
                 exit 1
             fi
             done
+            if [[ ! "$REPO_NAME" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+                echo "❌ Invalid REPO_NAME: $REPO_NAME"
+                exit 1
+            fi
+            URI="168442440833.dkr.ecr.us-west-2.amazonaws.com/baton-${REPO_NAME}:${TAG}-arm64"
+            echo "IMAGE_URI=$URI" >> $GITHUB_ENV
+
 
       - name: Debug ENV values
         run: |
@@ -77,9 +84,10 @@ jobs:
             jq -n \
                 --argjson config "$(cat config.json)" \
                 --argjson baton_capabilities "$(cat baton_capabilities.json)" \
-                '{config: $config, baton_capabilities: $baton_capabilities, \
-                URI: "168442440833.dkr.ecr.us-west-2.amazonaws.com/baton-${REPO_NAME}:${TAG}-arm64"}' \
+                --arg image_uri "$IMAGE_URI" \
+                '{config: $config, baton_capabilities: $baton_capabilities, image_uri: $image_uri}' \
                 > "metadata/TRAINFACED/$REPO_NAME/$MAJOR/$MINOR/$PATCH.json"
+            
             rm config.json baton_capabilities.json
 
       - name: Compute safe branch name
