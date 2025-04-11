@@ -99,6 +99,7 @@ jobs:
             echo "branch=metadata-${safe_repo}-${TAG}" >> $GITHUB_OUTPUT
 
       - name: Create pull request
+        id: cpr
         uses: peter-evans/create-pull-request@v6
         with:
             token: ${{ secrets.METADATA_REPO_PAT }}
@@ -109,3 +110,14 @@ jobs:
                 - Repo: ${{ env.REPO_NAME }}
                 - TAG: ${{ env.TAG }}
             branch: ${{ steps.branch.outputs.branch }}
+
+      - name: Enable auto-merge
+        if: steps.cpr.outputs.pull-request-url != ''
+        env:
+            GH_TOKEN: ${{ secrets.METADATA_REPO_PAT }}
+        run: |
+            pr_url="${{ steps.cpr.outputs.pull-request-url }}"
+            echo "PR URL: $pr_url"
+        
+            # Enable auto-merge using the GitHub CLI
+            gh pr merge "$pr_url" --auto --squash
