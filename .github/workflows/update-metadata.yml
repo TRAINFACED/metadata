@@ -14,7 +14,7 @@ jobs:
 
       - name: Handle metadata logic (Go)
         run: |
-          echo '${{ toJson(github.event.client_payload) }}' | go run ./cmd/handlemetadata
+          echo '${{ toJson(github.event.client_payload) }}' | go run ./cmd/metadata
         env:
           METADATA_REPO_PAT: ${{ secrets.METADATA_REPO_PAT }}
           GITHUB_REPOSITORY: ${{ github.repository }}
