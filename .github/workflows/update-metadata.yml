@@ -14,10 +14,15 @@ jobs:
 
       - name: Handle metadata logic (Go)
         run: |
-          echo '${{ toJson(github.event.client_payload) }}' | go run ./cmd/metadata --token "${{ secrets.METADATA_REPO_PAT }}"
+          payload=$(echo '${{ toJson(github.event.client_payload) }}')
+          repo=$(echo "$payload" | jq -r '.repo')
+          tag=$(echo "$payload" | jq -r '.tag')
+          go run ./cmd/on-tag/main.go --repo "$repo" --tag "$tag" --token ${{ secrets.METADATA_REPO_PAT }}
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.METADATA_REPO_PAT }}
 
+      # - 
       # - name: Parse payload
       #   id: parse
       #   run: |

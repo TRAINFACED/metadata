@@ -1,3 +1,6 @@
+# github.com/Masterminds/semver v1.5.0
+## explicit
+github.com/Masterminds/semver
 # github.com/google/go-github/v58 v58.0.0
 ## explicit; go 1.17
 github.com/google/go-github/v58/github
