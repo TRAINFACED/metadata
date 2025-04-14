@@ -12,6 +12,12 @@ jobs:
       - name: Checkout metadata repo
         uses: actions/checkout@v4
 
+
+      - name: Configure git identity
+        run: |
+          git config user.email "bot@trainfaced.com"
+          git config user.name "trainfaced-bot"
+
       - name: Handle metadata logic (Go)
         run: |
           echo '${{ toJson(github.event.client_payload) }}' | go run ./cmd/metadata
