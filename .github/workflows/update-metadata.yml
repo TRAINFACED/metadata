@@ -12,147 +12,154 @@ jobs:
       - name: Checkout metadata repo
         uses: actions/checkout@v4
 
-      - name: Parse payload
-        id: parse
+      - name: Handle metadata logic (Go)
         run: |
-            echo '${{ toJson(github.event.client_payload) }}' > payload.json
-            jq . payload.json
-
-            repo=$(jq -r .repo payload.json)
-            tag=$(jq -r .tag payload.json)
-            REPO_NAME="${repo##*/}"
-
-            echo "REPO=$repo" >> $GITHUB_ENV
-            echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
-            echo "TAG=$tag" >> $GITHUB_ENV
-
-            IFS='.' read -r MAJOR MINOR PATCH <<< "${tag#v}"
-            echo "MAJOR=$MAJOR" >> $GITHUB_ENV
-            echo "MINOR=$MINOR" >> $GITHUB_ENV
-            echo "PATCH=$PATCH" >> $GITHUB_ENV
-            
-            # Validate required vars
-            for var in REPO_NAME MAJOR MINOR PATCH; do
-            if [ -z "${!var}" ]; then
-                echo "❌ Error: $var is unset or empty"
-                exit 1
-            fi
-            done
-            if [[ ! "$REPO_NAME" =~ ^[a-zA-Z0-9_-]+$ ]]; then
-                echo "❌ Invalid REPO_NAME: $REPO_NAME"
-                exit 1
-            fi
-
-            #  168442440833.dkr.ecr.us-west-2.amazonaws.com/baton-github:0.1.28-arm64
-            URI="168442440833.dkr.ecr.us-west-2.amazonaws.com/baton-${REPO_NAME}:${MAJOR}.${MINOR}.${PATCH}-arm64"
-            echo "IMAGE_URI=$URI" >> $GITHUB_ENV
-
-
-      - name: Debug ENV values
-        run: |
-            echo "REPO_NAME=$REPO_NAME"
-            echo "TAG=$TAG"
-            echo "MAJOR=$MAJOR"
-            echo "MINOR=$MINOR"
-            echo "PATCH=$PATCH"
-
-      - name: Fetch Schemas
-        run: |
-            AUTH="Authorization: Bearer ${{ secrets.METADATA_REPO_PAT }}"
-            for file in config.json baton_capabilities.json; do
-                url="https://raw.githubusercontent.com/$REPO/$TAG/$file"
-                tmp=$(mktemp)
-
-                echo "Fetching $file..."
-                status=$(curl -s -o "$tmp" -w "%{http_code}" -H "$AUTH" "$url")
-
-                if [ "$status" -ne 200 ]; then
-                    echo "❌ Failed to fetch $file from $url (status $status)"
-                    echo "--- Response ---"
-                    cat "$tmp"
-                    echo "----------------"
-                    exit 1
-                fi
-
-                mv "$tmp" "$file"
-                echo "✅ Downloaded $file"
-            done
-
-      - name: Write metadata file
-        run: |
-            rm payload.json
-            mkdir -p "metadata/TRAINFACED/$REPO_NAME/$MAJOR/$MINOR"
-
-            jq -n \
-                --argjson config "$(cat config.json)" \
-                --argjson baton_capabilities "$(cat baton_capabilities.json)" \
-                --arg image_uri "$IMAGE_URI" \
-                '{config: $config, baton_capabilities: $baton_capabilities, image_uri: $image_uri}' \
-                > "metadata/TRAINFACED/$REPO_NAME/$MAJOR/$MINOR/$PATCH.json"
-            
-            rm config.json baton_capabilities.json
-
-      - name: Compute safe branch name
-        id: branch
-        run: |
-            safe_repo="${REPO//\//-}"
-            echo "branch=metadata-${safe_repo}-${TAG}" >> $GITHUB_OUTPUT
-
-      - name: Create pull request
-        id: cpr
-        uses: peter-evans/create-pull-request@v6
-        with:
-            token: ${{ secrets.METADATA_REPO_PAT }}
-            commit-message: "Add metadata for [TRAINFACED]/${{ env.REPO_NAME }}@${{ env.TAG }}"
-            title: "Add metadata for [TRAINFACED]/${{ env.REPO_NAME }}@${{ env.TAG }}"
-            body: |
-                This PR contains configuration metadata for:
-                - Repo: ${{ env.REPO_NAME }}
-                - TAG: ${{ env.TAG }}
-            branch: ${{ steps.branch.outputs.branch }}
-      - name: Get PR ID via REST
-        id: get-pr-id
+          echo '${{ toJson(github.event.client_payload) }}' | go run ./cmd/handlemetadata
         env:
-            GH_TOKEN: ${{ secrets.METADATA_REPO_PAT }}
-        run: |
-            pr_number=${{ steps.cpr.outputs.pull-request-number }}
-            repo="${{ github.repository }}"
-            pr_data=$(gh api repos/$repo/pulls/$pr_number)
-            pr_id=$(echo "$pr_data" | jq -r '.node_id')
-            echo "PR_ID=$pr_id" >> $GITHUB_ENV
+          METADATA_REPO_PAT: ${{ secrets.METADATA_REPO_PAT }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
 
-      - name: Enable auto-merge or merge if ready
-        env:
-            GH_TOKEN: ${{ secrets.METADATA_REPO_PAT }}
-        run: |
-            echo "Trying to enable auto-merge for PR: $PR_ID"
+    #   - name: Parse payload
+    #     id: parse
+    #     run: |
+    #         echo '${{ toJson(github.event.client_payload) }}' > payload.json
+    #         jq . payload.json
 
-            set -eo pipefail
+    #         repo=$(jq -r .repo payload.json)
+    #         tag=$(jq -r .tag payload.json)
+    #         REPO_NAME="${repo##*/}"
 
-            RESPONSE=$(gh api graphql -f query='
-            mutation($pullRequestId: ID!) {
-                enablePullRequestAutoMerge(input: {
-                pullRequestId: $pullRequestId,
-                mergeMethod: SQUASH
-                }) {
-                pullRequest {
-                    number
-                    autoMergeRequest {
-                    enabledAt
-                    }
-                }
-                }
-            }' -f pullRequestId="$PR_ID" 2>&1) || true
+    #         echo "REPO=$repo" >> $GITHUB_ENV
+    #         echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
+    #         echo "TAG=$tag" >> $GITHUB_ENV
 
-            echo "$RESPONSE"
+    #         IFS='.' read -r MAJOR MINOR PATCH <<< "${tag#v}"
+    #         echo "MAJOR=$MAJOR" >> $GITHUB_ENV
+    #         echo "MINOR=$MINOR" >> $GITHUB_ENV
+    #         echo "PATCH=$PATCH" >> $GITHUB_ENV
+            
+    #         # Validate required vars
+    #         for var in REPO_NAME MAJOR MINOR PATCH; do
+    #         if [ -z "${!var}" ]; then
+    #             echo "❌ Error: $var is unset or empty"
+    #             exit 1
+    #         fi
+    #         done
+    #         if [[ ! "$REPO_NAME" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+    #             echo "❌ Invalid REPO_NAME: $REPO_NAME"
+    #             exit 1
+    #         fi
 
-            if echo "$RESPONSE" | grep -q "UNPROCESSABLE"; then
-            echo "⚠️ Auto-merge not applicable (clean PR). Merging immediately..."
-            gh pr merge "${{ steps.cpr.outputs.pull-request-url }}" --squash
-            elif echo "$RESPONSE" | grep -q "errors"; then
-            echo "❌ Failed to enable auto-merge:"
-            echo "$RESPONSE"
-            exit 1
-            else
-            echo "✅ Auto-merge successfully enabled."
-            fi
+    #         #  168442440833.dkr.ecr.us-west-2.amazonaws.com/baton-github:0.1.28-arm64
+    #         URI="168442440833.dkr.ecr.us-west-2.amazonaws.com/baton-${REPO_NAME}:${MAJOR}.${MINOR}.${PATCH}-arm64"
+    #         echo "IMAGE_URI=$URI" >> $GITHUB_ENV
+
+
+    #   - name: Debug ENV values
+    #     run: |
+    #         echo "REPO_NAME=$REPO_NAME"
+    #         echo "TAG=$TAG"
+    #         echo "MAJOR=$MAJOR"
+    #         echo "MINOR=$MINOR"
+    #         echo "PATCH=$PATCH"
+
+    #   - name: Fetch Schemas
+    #     run: |
+    #         AUTH="Authorization: Bearer ${{ secrets.METADATA_REPO_PAT }}"
+    #         for file in config.json baton_capabilities.json; do
+    #             url="https://raw.githubusercontent.com/$REPO/$TAG/$file"
+    #             tmp=$(mktemp)
+
+    #             echo "Fetching $file..."
+    #             status=$(curl -s -o "$tmp" -w "%{http_code}" -H "$AUTH" "$url")
+
+    #             if [ "$status" -ne 200 ]; then
+    #                 echo "❌ Failed to fetch $file from $url (status $status)"
+    #                 echo "--- Response ---"
+    #                 cat "$tmp"
+    #                 echo "----------------"
+    #                 exit 1
+    #             fi
+
+    #             mv "$tmp" "$file"
+    #             echo "✅ Downloaded $file"
+    #         done
+
+    #   - name: Write metadata file
+    #     run: |
+    #         rm payload.json
+    #         mkdir -p "metadata/TRAINFACED/$REPO_NAME/$MAJOR/$MINOR"
+
+    #         jq -n \
+    #             --argjson config "$(cat config.json)" \
+    #             --argjson baton_capabilities "$(cat baton_capabilities.json)" \
+    #             --arg image_uri "$IMAGE_URI" \
+    #             '{config: $config, baton_capabilities: $baton_capabilities, image_uri: $image_uri}' \
+    #             > "metadata/TRAINFACED/$REPO_NAME/$MAJOR/$MINOR/$PATCH.json"
+            
+    #         rm config.json baton_capabilities.json
+
+    #   - name: Compute safe branch name
+    #     id: branch
+    #     run: |
+    #         safe_repo="${REPO//\//-}"
+    #         echo "branch=metadata-${safe_repo}-${TAG}" >> $GITHUB_OUTPUT
+
+    #   - name: Create pull request
+    #     id: cpr
+    #     uses: peter-evans/create-pull-request@v6
+    #     with:
+    #         token: ${{ secrets.METADATA_REPO_PAT }}
+    #         commit-message: "Add metadata for [TRAINFACED]/${{ env.REPO_NAME }}@${{ env.TAG }}"
+    #         title: "Add metadata for [TRAINFACED]/${{ env.REPO_NAME }}@${{ env.TAG }}"
+    #         body: |
+    #             This PR contains configuration metadata for:
+    #             - Repo: ${{ env.REPO_NAME }}
+    #             - TAG: ${{ env.TAG }}
+    #         branch: ${{ steps.branch.outputs.branch }}
+    #   - name: Get PR ID via REST
+    #     id: get-pr-id
+    #     env:
+    #         GH_TOKEN: ${{ secrets.METADATA_REPO_PAT }}
+    #     run: |
+    #         pr_number=${{ steps.cpr.outputs.pull-request-number }}
+    #         repo="${{ github.repository }}"
+    #         pr_data=$(gh api repos/$repo/pulls/$pr_number)
+    #         pr_id=$(echo "$pr_data" | jq -r '.node_id')
+    #         echo "PR_ID=$pr_id" >> $GITHUB_ENV
+
+    #   - name: Enable auto-merge or merge if ready
+    #     env:
+    #         GH_TOKEN: ${{ secrets.METADATA_REPO_PAT }}
+    #     run: |
+    #         echo "Trying to enable auto-merge for PR: $PR_ID"
+
+    #         set -eo pipefail
+
+    #         RESPONSE=$(gh api graphql -f query='
+    #         mutation($pullRequestId: ID!) {
+    #             enablePullRequestAutoMerge(input: {
+    #             pullRequestId: $pullRequestId,
+    #             mergeMethod: SQUASH
+    #             }) {
+    #             pullRequest {
+    #                 number
+    #                 autoMergeRequest {
+    #                 enabledAt
+    #                 }
+    #             }
+    #             }
+    #         }' -f pullRequestId="$PR_ID" 2>&1) || true
+
+    #         echo "$RESPONSE"
+
+    #         if echo "$RESPONSE" | grep -q "UNPROCESSABLE"; then
+    #         echo "⚠️ Auto-merge not applicable (clean PR). Merging immediately..."
+    #         gh pr merge "${{ steps.cpr.outputs.pull-request-url }}" --squash
+    #         elif echo "$RESPONSE" | grep -q "errors"; then
+    #         echo "❌ Failed to enable auto-merge:"
+    #         echo "$RESPONSE"
+    #         exit 1
+    #         else
+    #         echo "✅ Auto-merge successfully enabled."
+    #         fi
