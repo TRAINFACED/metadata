@@ -1,0 +1,150 @@
+{
+  "baton_capabilities": {
+    "@type": "type.googleapis.com/c1.connector.v2.ConnectorCapabilities",
+    "connectorCapabilities": [
+      "CAPABILITY_PROVISION",
+      "CAPABILITY_SYNC"
+    ],
+    "credentialDetails": {},
+    "resourceTypeCapabilities": [
+      {
+        "capabilities": [
+          "CAPABILITY_SYNC",
+          "CAPABILITY_PROVISION"
+        ],
+        "resourceType": {
+          "annotations": [
+            {
+              "@type": "type.googleapis.com/c1.connector.v2.V1Identifier",
+              "id": "org"
+            }
+          ],
+          "displayName": "Org",
+          "id": "org"
+        }
+      },
+      {
+        "capabilities": [
+          "CAPABILITY_SYNC",
+          "CAPABILITY_PROVISION"
+        ],
+        "resourceType": {
+          "annotations": [
+            {
+              "@type": "type.googleapis.com/c1.connector.v2.V1Identifier",
+              "id": "repository"
+            }
+          ],
+          "displayName": "Repository",
+          "id": "repository"
+        }
+      },
+      {
+        "capabilities": [
+          "CAPABILITY_SYNC",
+          "CAPABILITY_PROVISION"
+        ],
+        "resourceType": {
+          "annotations": [
+            {
+              "@type": "type.googleapis.com/c1.connector.v2.V1Identifier",
+              "id": "team"
+            }
+          ],
+          "displayName": "Team",
+          "id": "team",
+          "traits": [
+            "TRAIT_GROUP"
+          ]
+        }
+      },
+      {
+        "capabilities": [
+          "CAPABILITY_SYNC"
+        ],
+        "resourceType": {
+          "annotations": [
+            {
+              "@type": "type.googleapis.com/c1.connector.v2.V1Identifier",
+              "id": "user"
+            }
+          ],
+          "displayName": "User",
+          "id": "user",
+          "traits": [
+            "TRAIT_USER"
+          ]
+        }
+      }
+    ]
+  },
+  "config": {
+    "fields": [
+      {
+        "boolField": {},
+        "description": "Disable OpenTelemetry tracing",
+        "isOps": true,
+        "name": "otel-tracing-disabled"
+      },
+      {
+        "description": "Path to a file containing a PEM-encoded certificate to use as a CA for TLS connections to the OpenTelemetry collector",
+        "isOps": true,
+        "name": "otel-collector-endpoint-tls-cert-path",
+        "stringField": {}
+      },
+      {
+        "description": "A PEM-encoded certificate to use as a CA for TLS connections to the OpenTelemetry collector",
+        "isOps": true,
+        "name": "otel-collector-endpoint-tls-cert",
+        "stringField": {}
+      },
+      {
+        "boolField": {},
+        "description": "Allow insecure connections to the OpenTelemetry collector",
+        "isOps": true,
+        "name": "otel-collector-endpoint-tls-insecure"
+      },
+      {
+        "description": "The GitHub access token used to connect to the GitHub API.",
+        "isRequired": true,
+        "name": "token",
+        "stringField": {
+          "rules": {
+            "isRequired": true
+          }
+        }
+      },
+      {
+        "boolField": {},
+        "description": "Disable OpenTelemetry logging",
+        "isOps": true,
+        "name": "otel-logging-disabled"
+      },
+      {
+        "description": "The GitHub instance URL to connect to. (default \"https://github.com\")",
+        "name": "instance-url",
+        "stringField": {}
+      },
+      {
+        "description": "The log level: debug, info, warn, error",
+        "isOps": true,
+        "name": "log-level",
+        "stringField": {
+          "defaultValue": "info"
+        }
+      },
+      {
+        "description": "The endpoint of the OpenTelemetry collector to send observability data to (used for both tracing and logging if specific endpoints are not provided)",
+        "isOps": true,
+        "name": "otel-collector-endpoint",
+        "stringField": {}
+      },
+      {
+        "description": "Limit syncing to specific organizations.",
+        "name": "orgs",
+        "stringSliceField": {}
+      }
+    ]
+  },
+  "image_uri": "168442440833.dkr.ecr.us-west-2.amazonaws.com/baton-a:0.0.46-arm64"
+}
