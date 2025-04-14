@@ -64,6 +64,10 @@ func main() {
 	}
 	writeJSON(outFile, combined)
 
+	token := os.Getenv("METADATA_REPO_PAT")
+	repoURL := fmt.Sprintf("https://x-access-token:%s@github.com/%s.git", token, os.Getenv("GITHUB_REPOSITORY"))
+	run("git", "remote", "set-url", "origin", repoURL)
+
 	branch := fmt.Sprintf("metadata-%s-%s", strings.ReplaceAll(payload.Repo, "/", "-"), tag)
 	run("git", "checkout", "-b", branch)
 	run("git", "add", outFile)
