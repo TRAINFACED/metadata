@@ -24,7 +24,7 @@ jobs:
       - name: Get changed files (with status)
         id: changes
         run: |
-          git diff --name-status ./bucket/ HEAD^ HEAD > changed_files.txt
+          git diff --name-status HEAD^ HEAD -- ./bucket/ > changed_files.txt
           cat changed_files.txt
 
       - name: Sync changes to S3
