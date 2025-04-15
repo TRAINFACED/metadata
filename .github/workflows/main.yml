@@ -1,4 +1,4 @@
-name: Push to S3
+name: Push to S3.
 
 on:
   push:
@@ -24,22 +24,23 @@ jobs:
       - name: Get changed files (with status)
         id: changes
         run: |
-          git diff --name-status HEAD^ HEAD > changed_files.txt
+          git diff ./bucket/ --name-status HEAD^ HEAD > changed_files.txt
           cat changed_files.txt
 
       - name: Sync changes to S3
         run: |
           while read -r status path; do
+            s3_key="${path#bucket/}"  # Strip 'bucket/' for S3 key
             case "$status" in
               A|M)
                 if [[ -f "$path" ]]; then
                   echo "Uploading $path"
-                  aws s3 cp "$path" "s3://my-bucket-name/$path"
+                  aws s3 cp "$path" "s3://kans-gontzess-metadata-test-bucket/$s3_key"
                 fi
                 ;;
               D)
                 echo "Deleting $path"
-                aws s3 rm "s3://my-bucket-name/$path"
+                aws s3 rm "s3://kans-gontzess-metadata-test-bucket/$s3_key"
                 ;;
             esac
           done < changed_files.txt

@@ -18,7 +18,7 @@ import (
 
 var cmd = &cobra.Command{
 	Use:   "handle-on-tag",
-	Short: "Handles metadata dispatch from GitHub webhook",
+	Short: "Handles metadata dispatch from GitHub webhook.",
 	RunE:  run,
 }
 
