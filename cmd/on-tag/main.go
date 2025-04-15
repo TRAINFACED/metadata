@@ -206,12 +206,12 @@ func (c *UpdateMetadataCmd) Run() error {
 	if err != nil {
 		return fmt.Errorf("Failed to create PR: %v", err)
 	}
-	_, _, err = client.PullRequests.Merge(ctx, owner, "metadata", pr.GetNumber(), "Merge PR", &github.PullRequestOptions{
-		MergeMethod: "merge",
-	})
-	if err != nil {
-		return fmt.Errorf("Failed to enable auto-merge: %v", err)
-	}
+	// _, _, err = client.PullRequests.Merge(ctx, owner, "metadata", pr.GetNumber(), "Merge PR", &github.PullRequestOptions{
+	// 	MergeMethod: "merge",
+	// })
+	// if err != nil {
+	// 	return fmt.Errorf("Failed to enable auto-merge: %v", err)
+	// }
 
 	fmt.Printf("✅ PR was [merged]: %s\n", pr.GetHTMLURL())
 	return nil
