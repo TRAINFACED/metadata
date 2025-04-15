@@ -103,32 +103,33 @@ func (c *UpdateMetadataCmd) Run() error {
 	if !validName.MatchString(repoName) {
 		return fmt.Errorf("Invalid repo name: %s", repoName)
 	}
-	// prefix := fmt.Sprintf("https://github.com/TRAINFACED/baton-github/releases/download/%s/", c.tag)
-	// amd64Tarball := fmt.Sprintf("%sbaton-%s-%s-linux-amd64.tar.gz", prefix, c.tag, repoName, c.tag)
-	// arm64Tarball := fmt.Sprintf("%sbaton-%s-%s-linux-arm64.tar.gz", prefix, c.tag, repoName, c.tag)
-	// // https://github.com/ConductorOne/baton-github/releases/download/v0.1.28/baton-github_0.1.28_checksums.txt
-	// checksums := fmt.Sprintf("%sbaton-%s_%s_checksums.txt", prefix, c.tag, repoName, c.tag)
 
-	// // https://github.com/ConductorOne/baton-github/releases/download/v0.1.28/baton-github-v0.1.28-darwin-amd64.zip
-	// darwinAmd64 := fmt.Sprintf("%sbaton-%s-%s-darwin-amd64.zip", prefix, c.tag, repoName, c.tag)
-	// darwinArm64 := fmt.Sprintf("%sbaton-%s-%s-darwin-arm64.zip", prefix, c.tag, repoName, c.tag)
+	release, _, err := client.Repositories.GetReleaseByTag(ctx, owner, repoName, c.tag)
+	if err != nil {
+		return fmt.Errorf("Failed to get release by tag: %v", err)
+	}
 
-	// // https://github.com/ConductorOne/baton-github/archive/refs/tags/v0.1.28.zip
-	// zipball := fmt.Sprintf("https://github.com/ConductorOne/baton-github/archive/refs/tags/%s.zip", c.tag)
-	// tarball := fmt.Sprintf("https://github.com/ConductorOne/baton-github/archive/refs/tags/%s.tar.gz", c.tag)
+	assets := []map[string]interface{}{}
+	assets = append(assets, map[string]interface{}{
+		"name":       "tarball",
+		"url":        release.GetTarballURL(),
+		"created_at": release.GetCreatedAt().Format(time.RFC3339),
+	})
 
-	// thing := fmt.Sprintf("baton-%s-%s-darwin-amd64.zip", repoName, c.tag)
-	// assets := map[string]string{
-	// 	thing:          amd64Tarball,
-	// 	"arm64Tarball": arm64Tarball,
-	// 	"checksums":    checksums,
-	// 	"darwinAmd64":  darwinAmd64,
-	// 	"darwinArm64":  darwinArm64,
-	// }
-	// fmt.Printf("tarball: %s\n", tarball, arm64Tarball)
-	// if true {
-	// 	os.Exit(0)
-	// }
+	assets = append(assets, map[string]interface{}{
+		"name":       "zipball",
+		"url":        release.GetZipballURL(),
+		"created_at": release.GetCreatedAt().Format(time.RFC3339),
+	})
+
+	for _, asset := range release.Assets {
+		assetInfo := map[string]interface{}{
+			"name":       asset.GetName(),
+			"url":        asset.GetBrowserDownloadURL(),
+			"created_at": asset.GetCreatedAt().Format(time.RFC3339),
+		}
+		assets = append(assets, assetInfo)
+	}
 
 	imageURI := fmt.Sprintf("168442440833.dkr.ecr.us-west-2.amazonaws.com/baton-%s:%d.%d.%s-arm64", repoName, major, minor, effectivePatch)
 	branchName := fmt.Sprintf("metadata-%s-%s", strings.ReplaceAll(c.repo, "/", "-"), c.tag)
@@ -166,6 +167,7 @@ func (c *UpdateMetadataCmd) Run() error {
 		"config":             config,
 		"baton_capabilities": baton,
 		"image_uri":          imageURI,
+		"assets":             assets,
 		// "download_url":       tarball,
 		// https://github.com/ConductorOne/baton-github/releases/download/v0.1.28/baton-github-v0.1.28-linux-amd64.tar.gz
 	}
