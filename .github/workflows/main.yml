@@ -21,6 +21,25 @@ jobs:
           role-to-assume: arn:aws:iam::323258005321:role/kans-gontzess-metadata-bucket-tester
           aws-region: us-west-2
 
-      - name: Upload files to S3
+      - name: Get changed files (with status)
+        id: changes
         run: |
-          aws s3 cp ./metadata s3://kans-gontzess-metadata-test-bucket/metadata --recursive
+          git diff --name-status HEAD^ HEAD > changed_files.txt
+          cat changed_files.txt
+
+      - name: Sync changes to S3
+        run: |
+          while read -r status path; do
+            case "$status" in
+              A|M)
+                if [[ -f "$path" ]]; then
+                  echo "Uploading $path"
+                  aws s3 cp "$path" "s3://my-bucket-name/$path"
+                fi
+                ;;
+              D)
+                echo "Deleting $path"
+                aws s3 rm "s3://my-bucket-name/$path"
+                ;;
+            esac
+          done < changed_files.txt

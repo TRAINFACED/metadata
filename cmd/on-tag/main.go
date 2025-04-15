@@ -22,6 +22,10 @@ var cmd = &cobra.Command{
 	RunE:  run,
 }
 
+const (
+	thisRepo = "metadata"
+)
+
 func init() {
 	cmd.Flags().StringP("repo", "r", "", "Repository in owner/repo format")
 	cmd.Flags().StringP("tag", "t", "", "Tag to process")
@@ -132,10 +136,10 @@ func (c *UpdateMetadataCmd) Run() error {
 	}
 
 	// imageURI := fmt.Sprintf("168442440833.dkr.ecr.us-west-2.amazonaws.com/baton-%s:%d.%d.%s-arm64", repoName, major, minor, effectivePatch)
-	branchName := fmt.Sprintf("metadata-%s-%s", strings.ReplaceAll(c.repo, "/", "-"), c.tag)
+	branchName := fmt.Sprintf("connector-%s-%s", strings.ReplaceAll(c.repo, "/", "-"), c.tag)
 
 	// Get the base branch ref (main)
-	baseRef, _, err := client.Git.GetRef(ctx, owner, "metadata", "refs/heads/main")
+	baseRef, _, err := client.Git.GetRef(ctx, owner, thisRepo, "refs/heads/main")
 	if err != nil {
 		return fmt.Errorf("Failed to get main branch ref: %v", err)
 	}
@@ -147,7 +151,7 @@ func (c *UpdateMetadataCmd) Run() error {
 			SHA: baseRef.Object.SHA,
 		},
 	}
-	_, _, err = client.Git.CreateRef(ctx, owner, "metadata", branchRef)
+	_, _, err = client.Git.CreateRef(ctx, owner, thisRepo, branchRef)
 	if err != nil {
 		return fmt.Errorf("Failed to create branch: %v", err)
 	}
@@ -178,8 +182,8 @@ func (c *UpdateMetadataCmd) Run() error {
 
 	contentBytes, _ := json.MarshalIndent(combined, "", "  ")
 	content := string(contentBytes)
-	path := fmt.Sprintf("metadata/TRAINFACED/%s/%d/%d/%s.json", repoName, major, minor, effectivePatch)
-	commitMsg := fmt.Sprintf("Add metadata for [TRAINFACED]/%s@%s", repoName, c.tag)
+	path := fmt.Sprintf("bucket/connectors/TRAINFACED/%s/%d/%d/%s.json", repoName, major, minor, effectivePatch)
+	commitMsg := fmt.Sprintf("Add connector metadata for [TRAINFACED]/%s@%s", repoName, c.tag)
 
 	opts := &github.RepositoryContentFileOptions{
 		Message: github.String(commitMsg),
@@ -191,13 +195,13 @@ func (c *UpdateMetadataCmd) Run() error {
 			Date:  &github.Timestamp{Time: time.Now()},
 		},
 	}
-	_, _, err = client.Repositories.CreateFile(ctx, owner, "metadata", path, opts)
+	_, _, err = client.Repositories.CreateFile(ctx, owner, thisRepo, path, opts)
 	if err != nil {
 		return fmt.Errorf("Failed to create metadata file: %v", err)
 	}
 
 	// Create PR
-	pr, _, err := client.PullRequests.Create(ctx, owner, "metadata", &github.NewPullRequest{
+	pr, _, err := client.PullRequests.Create(ctx, owner, thisRepo, &github.NewPullRequest{
 		Title: github.String(commitMsg),
 		Head:  github.String(branchName),
 		Base:  github.String("main"),
@@ -206,7 +210,7 @@ func (c *UpdateMetadataCmd) Run() error {
 	if err != nil {
 		return fmt.Errorf("Failed to create PR: %v", err)
 	}
-	_, _, err = client.PullRequests.Merge(ctx, owner, "metadata", pr.GetNumber(), "Merge PR", &github.PullRequestOptions{
+	_, _, err = client.PullRequests.Merge(ctx, owner, thisRepo, pr.GetNumber(), "Merge PR", &github.PullRequestOptions{
 		MergeMethod: "merge",
 	})
 	if err != nil {
