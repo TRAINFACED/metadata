@@ -158,21 +158,19 @@
       }
     ]
   },
-  "images": {
-    "images": [
-      {
-        "architecture": "amd64",
-        "image": "ghcr.io/conductorone/a:0.0.1-amd64"
-      },
-      {
-        "architecture": "arm64",
-        "image": "ghcr.io/conductorone/a:0.0.1-arm64"
-      },
-      {
-        "architecture": "arm64",
-        "image": "168442440833.dkr.ecr.us-west-2.amazonaws.com/a:0.0.1-arm64",
-        "version": "0.0.1"
-      }
-    ]
-  }
+  "images":[
+    {
+      "architecture": "amd64",
+      "image": "ghcr.io/conductorone/a:0.0.1-amd64"
+    },
+    {
+      "architecture": "arm64",
+      "image": "ghcr.io/conductorone/a:0.0.1-arm64"
+    },
+    {
+      "architecture": "arm64",
+      "image": "168442440833.dkr.ecr.us-west-2.amazonaws.com/a:0.0.1-arm64",
+      "version": "0.0.1"
+    }
+  ]
 }
