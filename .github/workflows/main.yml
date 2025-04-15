@@ -14,50 +14,65 @@ jobs:
     steps:
       - name: Checkout metadata repo
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
 
+      # - name: Get changed files (with status)
+      #   id: changes
+      #   run: |
+      #     git diff --name-status HEAD^ HEAD -- ./bucket/ > changed_files.txt
+      #     cat changed_files.txt
+      
       - name: Configure AWS credentials using OIDC
         uses: aws-actions/configure-aws-credentials@v2
         with:
           role-to-assume: arn:aws:iam::323258005321:role/kans-gontzess-metadata-bucket-tester
           aws-region: us-west-2
 
-      - name: Get changed files (with status)
-        id: changes
+      - name: Get changed files using GitHub API
+        id: diff
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
         run: |
-          git diff --name-status HEAD^ HEAD -- ./bucket/ > changed_files.txt
+          echo "Fetching changed files from $BEFORE to $AFTER"
+
+          gh api repos/$REPO/compare/$BEFORE...$AFTER \
+            --jq '.files[] | [.status, .filename] | @tsv' \
+            > changed_files.txt
+
           cat changed_files.txt
-      
-      
+
       - name: Sync changes to S3 (correctly, no subshell)
         run: |
             exec 3< changed_files.txt
             while IFS=$'\t' read -r status path <&3; do
-              s3_key="${path#bucket/}"
-  
-              case "$status" in
-                added|modified)
-                  if [[ -f "$path" ]]; then
-                    echo "::group::Uploading $path → s3://kans-gontzess-metadata-test-bucket/$s3_key"
-                    if aws s3 cp "$path" "s3://kans-gontzess-metadata-test-bucket/$s3_key"; then
-                      echo "::notice file=$path::✅ Uploaded"
+              if [[ "$path" == bucket/* ]]; then
+                s3_key="${path#bucket/}"
+    
+                case "$status" in
+                  added|modified)
+                    if [[ -f "$path" ]]; then
+                      echo "::group::Uploading $path → s3://kans-gontzess-metadata-test-bucket/$s3_key"
+                      if aws s3 cp "$path" "s3://kans-gontzess-metadata-test-bucket/$s3_key"; then
+                        echo "::notice file=$path::✅ Uploaded"
+                      else
+                        echo "::error file=$path::❌ Upload failed"
+                      fi
+                      echo "::endgroup::"
                     else
-                      echo "::error file=$path::❌ Upload failed"
+                      echo "::warning file=$path::⚠️ Missing file: $path"
+                    fi
+                    ;;
+                  removed)
+                    echo "::group::Deleting s3://kans-gontzess-metadata-test-bucket/$s3_key"
+                    if aws s3 rm "s3://kans-gontzess-metadata-test-bucket/$s3_key"; then
+                      echo "::notice::🗑️ Deleted s3://kans-gontzess-metadata-test-bucket/$s3_key"
+                    else
+                      echo "::error::❌ Deletion failed for s3://kans-gontzess-metadata-test-bucket/$s3_key"
                     fi
                     echo "::endgroup::"
-                  else
-                    echo "::warning file=$path::⚠️ Missing file: $path"
-                  fi
-                  ;;
-                removed)
-                  echo "::group::Deleting s3://kans-gontzess-metadata-test-bucket/$s3_key"
-                  if aws s3 rm "s3://kans-gontzess-metadata-test-bucket/$s3_key"; then
-                    echo "::notice::🗑️ Deleted s3://kans-gontzess-metadata-test-bucket/$s3_key"
-                  else
-                    echo "::error::❌ Deletion failed for s3://kans-gontzess-metadata-test-bucket/$s3_key"
-                  fi
-                  echo "::endgroup::"
-                  ;;
-              esac
+                    ;;
+                esac
+              fi
             done
