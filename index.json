@@ -1,0 +1,22 @@
+{
+    "connectors": [
+        {
+            "name": "a",
+            "org": "conductorone",
+            "releases": [
+                {
+                    "channel": "nightly",
+                    "semver": "0.0.61"
+                },
+                {
+                    "channel": "preview",
+                    "semver": "0.0.60"
+                },
+                {
+                    "channel": "stable",
+                    "semver": "0.0.58"
+                }
+            ]
+        }
+    ]
+}

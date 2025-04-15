@@ -7,7 +7,6 @@ on:
 jobs:
   handle:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout metadata repo
         uses: actions/checkout@v4

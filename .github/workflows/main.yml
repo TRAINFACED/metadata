@@ -1,0 +1,26 @@
+name: Push to S3
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  handle:
+    runs-on: ubuntu-latest
+    permissions:
+        id-token: write    # Required for OIDC
+        contents: read     # Required to checkout the code
+    steps:
+      - name: Checkout metadata repo
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: arn:aws:iam::323258005321:role/kans-gontzess-metadata-bucket-tester
+          aws-region: us-west-2
+
+      - name: Upload files to S3
+        run: |
+          aws s3 cp ./metadata s3://kans-gontzess-metadata-test-bucket/metadata --recursive
