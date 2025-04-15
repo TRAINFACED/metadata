@@ -161,13 +161,17 @@ func (c *UpdateMetadataCmd) Run() error {
 	if err != nil {
 		return fmt.Errorf("Failed to fetch baton_capabilities: %v", err)
 	}
+	images, err := c.fetchJSONFile("images.json")
+	if err != nil {
+		return fmt.Errorf("Failed to fetch baton_capabilities: %v", err)
+	}
 
 	// Build final metadata JSON
 	combined := map[string]interface{}{
 		"config":             config,
 		"baton_capabilities": baton,
-		"image_uri":          imageURI,
 		"assets":             assets,
+		"images":             images,
 		// "download_url":       tarball,
 		// https://github.com/ConductorOne/baton-github/releases/download/v0.1.28/baton-github-v0.1.28-linux-amd64.tar.gz
 	}
@@ -202,12 +206,12 @@ func (c *UpdateMetadataCmd) Run() error {
 	if err != nil {
 		return fmt.Errorf("Failed to create PR: %v", err)
 	}
-	// _, _, err = client.PullRequests.Merge(ctx, owner, "metadata", pr.GetNumber(), "Merge PR", &github.PullRequestOptions{
-	// 	MergeMethod: "merge",
-	// })
-	// if err != nil {
-	// 	return fmt.Errorf("Failed to enable auto-merge: %v", err)
-	// }
+	_, _, err = client.PullRequests.Merge(ctx, owner, "metadata", pr.GetNumber(), "Merge PR", &github.PullRequestOptions{
+		MergeMethod: "merge",
+	})
+	if err != nil {
+		return fmt.Errorf("Failed to enable auto-merge: %v", err)
+	}
 
 	fmt.Printf("✅ PR was [merged]: %s\n", pr.GetHTMLURL())
 	return nil
