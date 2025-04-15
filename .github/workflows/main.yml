@@ -29,20 +29,35 @@ jobs:
           git diff --name-status HEAD^ HEAD -- ./bucket/ > changed_files.txt
           cat changed_files.txt
 
-      - name: Sync changes to S3
+      - name: Sync changes to S3 (with logging)
         run: |
-          while read -r status path; do
-            s3_key="${path#bucket/}"  # Strip 'bucket/' for S3 key
-            case "$status" in
-              A|M)
-                if [[ -f "$path" ]]; then
-                  echo "Uploading $path"
-                  aws s3 cp "$path" "s3://kans-gontzess-metadata-test-bucket/$s3_key"
-                fi
-                ;;
-              D)
-                echo "Deleting $path"
-                aws s3 rm "s3://kans-gontzess-metadata-test-bucket/$s3_key"
-                ;;
-            esac
-          done < changed_files.txt
+            uploaded_files=()
+            deleted_files=()
+  
+            while IFS=$'\t' read -r status path; do
+              if [[ "$path" == bucket/index.json || "$path" == bucket/metadata/* ]]; then
+                s3_key="${path#bucket/}"
+                case "$status" in
+                  added|modified)
+                    if [[ -f "$path" ]]; then
+                      echo "Uploading $path to s3://kans-gontzess-metadata-test-bucket/$s3_key"
+                      aws s3 cp "$path" "s3://kans-gontzess-metadata-test-bucket/$s3_key"
+                      uploaded_files+=("$s3_key")
+                    fi
+                    ;;
+                  removed)
+                    echo "Deleting s3://kans-gontzess-metadata-test-bucket/$s3_key"
+                    aws s3 rm "s3://kans-gontzess-metadata-test-bucket/$s3_key"
+                    deleted_files+=("$s3_key")
+                    ;;
+                esac
+              fi
+            done <<< "$(cat changed_files.txt)"
+  
+            echo ""
+            echo "==== Summary ===="
+            echo "Uploaded:"
+            for f in "${uploaded_files[@]}"; do echo "  - $f"; done
+  
+            echo "Deleted:"
+            for f in "${deleted_files[@]}"; do echo "  - $f"; done
