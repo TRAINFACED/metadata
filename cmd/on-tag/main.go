@@ -131,7 +131,7 @@ func (c *UpdateMetadataCmd) Run() error {
 		assets = append(assets, assetInfo)
 	}
 
-	imageURI := fmt.Sprintf("168442440833.dkr.ecr.us-west-2.amazonaws.com/baton-%s:%d.%d.%s-arm64", repoName, major, minor, effectivePatch)
+	// imageURI := fmt.Sprintf("168442440833.dkr.ecr.us-west-2.amazonaws.com/baton-%s:%d.%d.%s-arm64", repoName, major, minor, effectivePatch)
 	branchName := fmt.Sprintf("metadata-%s-%s", strings.ReplaceAll(c.repo, "/", "-"), c.tag)
 
 	// Get the base branch ref (main)
