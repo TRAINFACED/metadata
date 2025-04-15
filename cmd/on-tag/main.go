@@ -161,7 +161,7 @@ func (c *UpdateMetadataCmd) Run() error {
 	if err != nil {
 		return fmt.Errorf("Failed to fetch baton_capabilities: %v", err)
 	}
-	images, err := c.fetchJSONFile("images.json")
+	images, err := c.fetchJSONFileArray("images.json")
 	if err != nil {
 		return fmt.Errorf("Failed to fetch images.json: %v", err)
 	}
@@ -206,30 +206,55 @@ func (c *UpdateMetadataCmd) Run() error {
 	if err != nil {
 		return fmt.Errorf("Failed to create PR: %v", err)
 	}
-	// _, _, err = client.PullRequests.Merge(ctx, owner, "metadata", pr.GetNumber(), "Merge PR", &github.PullRequestOptions{
-	// 	MergeMethod: "merge",
-	// })
-	// if err != nil {
-	// 	return fmt.Errorf("Failed to enable auto-merge: %v", err)
-	// }
+	_, _, err = client.PullRequests.Merge(ctx, owner, "metadata", pr.GetNumber(), "Merge PR", &github.PullRequestOptions{
+		MergeMethod: "merge",
+	})
+	if err != nil {
+		return fmt.Errorf("Failed to enable auto-merge: %v", err)
+	}
 
 	fmt.Printf("✅ PR was [merged]: %s\n", pr.GetHTMLURL())
 	return nil
 }
 
 func (c *UpdateMetadataCmd) fetchJSONFile(file string) (map[string]interface{}, error) {
-	url := fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/%s", c.repo, c.tag, file)
+	return fetchJSONFileGeneric[map[string]interface{}](file, c.repo, c.tag, c.token)
+}
+
+func (c *UpdateMetadataCmd) fetchJSONFileArray(file string) ([]interface{}, error) {
+	return fetchJSONFileGeneric[[]interface{}](file, c.repo, c.tag, c.token)
+}
+
+func fetchJSONFileGeneric[T any](file string, repo string, tag string, token string) (T, error) {
+	var result T
+	url := fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/%s", repo, tag, file)
 	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.token))
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil || resp.StatusCode != 200 {
-		return nil, fmt.Errorf("Failed to fetch %s: %v", file, err)
+		return result, fmt.Errorf("Failed to fetch %s: %v", file, err)
 	}
 	defer resp.Body.Close()
-	var out map[string]interface{}
-	err = json.NewDecoder(resp.Body).Decode(&out)
+	err = json.NewDecoder(resp.Body).Decode(&result)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to decode %s: %v", file, err)
+		return result, fmt.Errorf("Failed to decode %s: %v", file, err)
 	}
-	return out, nil
+	return result, nil
 }
+
+// func (c *UpdateMetadataCmd) fetchJSONFile(file string) (map[string]interface{}, error) {
+// 	url := fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/%s", c.repo, c.tag, file)
+// 	req, _ := http.NewRequest("GET", url, nil)
+// 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.token))
+// 	resp, err := http.DefaultClient.Do(req)
+// 	if err != nil || resp.StatusCode != 200 {
+// 		return nil, fmt.Errorf("Failed to fetch %s: %v", file, err)
+// 	}
+// 	defer resp.Body.Close()
+// 	var out map[string]interface{}
+// 	err = json.NewDecoder(resp.Body).Decode(&out)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("Failed to decode %s: %v", file, err)
+// 	}
+// 	return out, nil
+// }
