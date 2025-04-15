@@ -163,7 +163,7 @@ func (c *UpdateMetadataCmd) Run() error {
 	}
 	images, err := c.fetchJSONFile("images.json")
 	if err != nil {
-		return fmt.Errorf("Failed to fetch baton_capabilities: %v", err)
+		return fmt.Errorf("Failed to fetch images.json: %v", err)
 	}
 
 	// Build final metadata JSON
