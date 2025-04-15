@@ -28,36 +28,36 @@ jobs:
         run: |
           git diff --name-status HEAD^ HEAD -- ./bucket/ > changed_files.txt
           cat changed_files.txt
-
-      - name: Sync changes to S3 (with logging)
+      
+      
+      - name: Sync changes to S3 (correctly, no subshell)
         run: |
-            uploaded_files=()
-            deleted_files=()
+            exec 3< changed_files.txt
+            while IFS=$'\t' read -r status path <&3; do
+              s3_key="${path#bucket/}"
   
-            while IFS=$'\t' read -r status path; do
-              if [[ "$path" == bucket/index.json || "$path" == bucket/metadata/* ]]; then
-                s3_key="${path#bucket/}"
-                case "$status" in
-                  added|modified)
-                    if [[ -f "$path" ]]; then
-                      echo "Uploading $path to s3://kans-gontzess-metadata-test-bucket/$s3_key"
-                      aws s3 cp "$path" "s3://kans-gontzess-metadata-test-bucket/$s3_key"
-                      uploaded_files+=("$s3_key")
+              case "$status" in
+                added|modified)
+                  if [[ -f "$path" ]]; then
+                    echo "::group::Uploading $path → s3://kans-gontzess-metadata-test-bucket/$s3_key"
+                    if aws s3 cp "$path" "s3://kans-gontzess-metadata-test-bucket/$s3_key"; then
+                      echo "::notice file=$path::✅ Uploaded"
+                    else
+                      echo "::error file=$path::❌ Upload failed"
                     fi
-                    ;;
-                  removed)
-                    echo "Deleting s3://kans-gontzess-metadata-test-bucket/$s3_key"
-                    aws s3 rm "s3://kans-gontzess-metadata-test-bucket/$s3_key"
-                    deleted_files+=("$s3_key")
-                    ;;
-                esac
-              fi
-            done <<< "$(cat changed_files.txt)"
-  
-            echo ""
-            echo "==== Summary ===="
-            echo "Uploaded:"
-            for f in "${uploaded_files[@]}"; do echo "  - $f"; done
-  
-            echo "Deleted:"
-            for f in "${deleted_files[@]}"; do echo "  - $f"; done
+                    echo "::endgroup::"
+                  else
+                    echo "::warning file=$path::⚠️ Missing file: $path"
+                  fi
+                  ;;
+                removed)
+                  echo "::group::Deleting s3://kans-gontzess-metadata-test-bucket/$s3_key"
+                  if aws s3 rm "s3://kans-gontzess-metadata-test-bucket/$s3_key"; then
+                    echo "::notice::🗑️ Deleted s3://kans-gontzess-metadata-test-bucket/$s3_key"
+                  else
+                    echo "::error::❌ Deletion failed for s3://kans-gontzess-metadata-test-bucket/$s3_key"
+                  fi
+                  echo "::endgroup::"
+                  ;;
+              esac
+            done
